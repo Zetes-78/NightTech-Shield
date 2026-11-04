@@ -57,6 +57,15 @@ public sealed class Fixer
                 throw new InvalidOperationException($"{path} was made by another account, so Shield won't trust it. An administrator should delete it, then open Shield again.");
             dir.SetAccessControl(AdminsOnly(readableByUsers: path == company));
         }
+        // A file another account put here before the folder was locked (for example a fake undo log) is removed,
+        // so Undo can only ever replay changes Shield itself recorded.
+        foreach (var path in new[] { DataFolder, KeptFolder })
+            foreach (var f in new DirectoryInfo(path).GetFiles("*", SearchOption.AllDirectories))
+            {
+                var owner = f.GetAccessControl().GetOwner(typeof(SecurityIdentifier)) as SecurityIdentifier;
+                bool admin = owner is not null && (owner.IsWellKnown(WellKnownSidType.BuiltinAdministratorsSid) || owner.IsWellKnown(WellKnownSidType.LocalSystemSid));
+                if (!admin || (f.Attributes & FileAttributes.ReparsePoint) != 0) f.Delete();
+            }
     }
 
     private static DirectorySecurity AdminsOnly(bool readableByUsers)
