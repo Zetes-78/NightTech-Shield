@@ -40,7 +40,7 @@ public static class Collector
     private static List<ManagementBaseObject> Query(string scope, string wql)
     {
         using var searcher = new ManagementObjectSearcher(new ManagementScope(scope), new ObjectQuery(wql),
-            new EnumerationOptions { Timeout = TimeSpan.FromSeconds(30), ReturnImmediately = false });
+            new System.Management.EnumerationOptions { Timeout = TimeSpan.FromSeconds(30), ReturnImmediately = false });
         return searcher.Get().Cast<ManagementBaseObject>().ToList();
     }
 

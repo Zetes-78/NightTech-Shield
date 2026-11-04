@@ -8,7 +8,7 @@ public static class Brand
 {
     public const string Company = "Night Tech Solutions";
     public const string Website = "https://nighttech.solutions";
-    public const string ShieldPage = "https://nighttech.solutions/shield/";
+    public const string ShieldPage = "https://nighttech.solutions/security-apps/#shield";
     public const string ContactPage = "https://nighttech.solutions/contact/";
     public const string FreeApps = "https://nighttech.solutions/security-apps/";
     public const string Privacy = "https://nighttech.solutions/privacy/#apps";

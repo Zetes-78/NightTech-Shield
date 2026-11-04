@@ -9,7 +9,7 @@ programs, a tampered hosts file, an unexpected web proxy, and remote-control pro
 Scanning only looks. Nothing changes until you choose what to fix, and Shield asks first.
 
 **Download:** [NightTechShield-Setup.exe](https://github.com/Zetes-78/NightTech-Shield/releases/latest/download/NightTechShield-Setup.exe)
-· [How to use it](https://nighttech.solutions/shield/)
+· [How to use it](https://nighttech.solutions/security-apps/#shield)
 
 ## What it checks
 

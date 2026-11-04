@@ -8,7 +8,7 @@
 #endif
 #define Publisher "Night Tech Solutions"
 #define PublisherUrl "https://nighttech.solutions/"
-#define HelpUrl "https://nighttech.solutions/shield/"
+#define HelpUrl "https://nighttech.solutions/security-apps/#shield"
 #define ExeName "NightTechShield.exe"
 
 [Setup]
