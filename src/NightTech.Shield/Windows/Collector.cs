@@ -74,7 +74,29 @@ public static class Collector
         foreach (var o in Query(@"root\cimv2", "SELECT PartOfDomain FROM Win32_ComputerSystem")) domain = Bool(o, "PartOfDomain");
         using var entra = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\CloudDomainJoin\JoinInfo");
         bool entraJoined = entra?.GetSubKeyNames().Length > 0;
-        f.DomainJoined = domain == true || entraJoined ? true : domain;
+        f.DomainJoined = domain == true || entraJoined || MdmEnrolled() || BrowserCloudManaged() ? true : domain;
+    }
+
+    /// <summary>Enrolled in Intune or another device-management service (work or school PC).</summary>
+    private static bool MdmEnrolled()
+    {
+        using var k = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Enrollments");
+        if (k is null) return false;
+        foreach (var sub in k.GetSubKeyNames())
+        {
+            using var e = k.OpenSubKey(sub);
+            if (e is not null && Reg.Str(e, "ProviderID").Length > 0 && Reg.Str(e, "UPN").Length > 0) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Chrome or Edge enrolled in their company cloud management.</summary>
+    private static bool BrowserCloudManaged()
+    {
+        using var chrome = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Google\Chrome");
+        using var edge = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\Edge");
+        return chrome?.GetValue("CloudManagementEnrollmentToken") is string c && c.Length > 0
+               || edge?.GetValue("CloudManagementEnrollmentToken") is string e && e.Length > 0;
     }
 
     // ---------------- Defender ----------------
@@ -198,7 +220,7 @@ public static class Collector
             foreach (var name in k.GetValueNames())
             {
                 if (name.Length == 0 || IsTurnedOff(approved, name)) continue;
-                var command = k.GetValue(name)?.ToString() ?? "";
+                var command = k.GetValue(name, null, RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString() ?? "";
                 if (command.Trim().Length == 0) continue;
                 f.Startup.Add(Item(StartupKind.RegistryValue, where, location, name, command, user));
             }
@@ -239,11 +261,20 @@ public static class Collector
         var item = new StartupItem { Kind = kind, Where = where, Location = location, Name = name, Command = expanded, Program = program, ProgramExists = exists };
         if (exists == true)
         {
-            var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-            if (program.StartsWith(windows + "\\", StringComparison.OrdinalIgnoreCase)) item.Signed = true;   // Windows' own (catalog-signed) files
-            else (item.Signed, item.Signer) = Signature.Check(program);
+            (item.Signed, item.Signer) = Signature.Check(program);
+            // Windows' own files are signed through catalogs, which this check doesn't read; only administrators can change these folders.
+            if (item.Signed != true && IsWindowsOwnFile(program)) item.Signed = true;
         }
         return item;
+    }
+
+    private static bool IsWindowsOwnFile(string path)
+    {
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        var dir = Path.GetDirectoryName(Path.GetFullPath(path)) ?? "";
+        return string.Equals(dir, windows, StringComparison.OrdinalIgnoreCase)
+               || dir.StartsWith(Path.Combine(windows, "System32"), StringComparison.OrdinalIgnoreCase)
+               || dir.StartsWith(Path.Combine(windows, "SysWOW64"), StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>"rundll32.exe" becomes C:\Windows\System32\rundll32.exe, the way Windows finds it.</summary>
@@ -332,7 +363,16 @@ public static class Collector
 
     // ---------------- Network ----------------
 
-    public static string HostsPath => Path.Combine(Environment.SystemDirectory, @"drivers\etc\hosts");
+    /// <summary>The hosts file, wherever Windows has been told to keep it (DataBasePath), normally System32\drivers\etc.</summary>
+    public static string HostsPath
+    {
+        get
+        {
+            using var k = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\Tcpip\Parameters");
+            var db = k is null ? "" : Environment.ExpandEnvironmentVariables(Reg.Str(k, "DataBasePath"));
+            return Path.Combine(db.Length > 0 && Path.IsPathRooted(db) ? db : Path.Combine(Environment.SystemDirectory, @"drivers\etc"), "hosts");
+        }
+    }
     public const string InternetSettingsPath = @"Software\Microsoft\Windows\CurrentVersion\Internet Settings";
 
     private static void Network(ScanFacts f, TargetUser user)

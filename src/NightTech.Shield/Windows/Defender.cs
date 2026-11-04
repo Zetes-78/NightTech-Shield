@@ -33,6 +33,21 @@ public static class Defender
         return File.Exists(pf) ? pf : null;
     }
 
+    /// <summary>Defender's real-time protection as it is right now. Null when Defender doesn't answer.</summary>
+    public static bool? RealTimeOn()
+    {
+        try
+        {
+            using var searcher = new System.Management.ManagementObjectSearcher(@"root\Microsoft\Windows\Defender", "SELECT RealTimeProtectionEnabled FROM MSFT_MpComputerStatus");
+            foreach (var o in searcher.Get())
+                using (o)
+                    return o["RealTimeProtectionEnabled"] as bool?;
+        }
+        catch (System.Management.ManagementException) { }
+        catch (System.Runtime.InteropServices.COMException) { }
+        return null;
+    }
+
     public static Task<RunResult> UpdateDefinitions(CancellationToken ct) => Mp("-SignatureUpdate", TimeSpan.FromMinutes(15), ct);
 
     /// <summary>Quick scan (type 1) or full scan (type 2). Exit code 2 means Defender found something.</summary>

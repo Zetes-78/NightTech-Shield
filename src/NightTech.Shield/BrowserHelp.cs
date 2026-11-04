@@ -24,14 +24,20 @@ public static class BrowserHelp
             _ => ($"{Scheme(browser)}://settings/reset", $"Paste this into {browser}'s address bar and press Enter, then choose \"Restore settings to their original defaults\" and Reset settings. Bookmarks, history and saved passwords stay; extensions are turned off and the search engine and start page go back to normal."),
         };
 
+        ShowAddress(owner, extensions ? $"Check {browser}'s extensions" : $"Reset {browser}", f.Title, steps, address);
+    }
+
+    /// <summary>A small window with steps and an address to copy.</summary>
+    public static void ShowAddress(Window owner, string title, string heading, string steps, string address)
+    {
         var win = new Window
         {
-            Title = extensions ? $"Check {browser}'s extensions" : $"Reset {browser}",
+            Title = title,
             Owner = owner, Width = 520, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
             WindowStartupLocation = WindowStartupLocation.CenterOwner, FontFamily = new FontFamily("Segoe UI"), FontSize = 14,
         };
         var panel = new StackPanel { Margin = new Thickness(20) };
-        panel.Children.Add(new TextBlock { Text = f.Title, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
+        panel.Children.Add(new TextBlock { Text = heading, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
         panel.Children.Add(new TextBlock { Text = steps, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 12) });
         var box = new TextBox { Text = address, IsReadOnly = true, FontFamily = new FontFamily("Consolas"), FontSize = 15, Padding = new Thickness(6), Margin = new Thickness(0, 0, 0, 12) };
         panel.Children.Add(box);

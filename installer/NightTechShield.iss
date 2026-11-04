@@ -69,6 +69,11 @@ FinishedLabel=Night Tech Shield is installed. Open it and choose Scan now. Nothi
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
+[Dirs]
+; Made by the (administrator) installer, so an ordinary account can't make it first. Shield locks it down further on first run.
+Name: "{commonappdata}\Night Tech Solutions"; Permissions: admins-full system-full
+Name: "{commonappdata}\Night Tech Solutions\Shield"; Permissions: admins-full system-full
+
 [Files]
 Source: "..\publish\{#ExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion

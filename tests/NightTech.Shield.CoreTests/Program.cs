@@ -177,7 +177,7 @@ var redirect = e11.Single(f => f.Id == "hosts:redirect");
 Check(redirect.Severity == Severity.Risk && redirect.Detail.Contains("www.paypal.com goes to 185.12.3.4"), "paypal redirect is a risk");
 var blocked = e11.Single(f => f.Id == "hosts:block");
 Check(blocked.Detail.Contains("update.microsoft.com") && blocked.Detail.Contains("malwarebytes") && !blocked.Detail.Contains("vortex") && !blocked.Detail.Contains("adservice"), "security blocks found, ad and telemetry blocks left alone");
-Check(redirect.FixData.OrderBy(x => x).SequenceEqual(new[] { "2", "3", "6" }), "fix lines: paypal, update, malwarebytes");
+Check(redirect.FixData.SequenceEqual(new[] { "2" }) && blocked.FixData.SequenceEqual(new[] { "3", "6" }), "fix lines: paypal for the redirect; update and malwarebytes for the block");
 var other = e11.Single(f => f.Id == "hosts:other");
 Check(other.Severity == Severity.Info && other.Detail.Contains("nas.local"), "other entries are info");
 var big = Healthy(); for (int i = 0; i < 300; i++) big.Hosts.Add($"0.0.0.0 ads{i}.example");
@@ -202,6 +202,26 @@ var mixed = Eval(f8.Startup.Count == 0 ? f8 : f8);
 Check(mixed.Select(f => (int)f.Severity).SequenceEqual(mixed.Select(f => (int)f.Severity).OrderByDescending(x => x)), "most serious first");
 var r = new ScanResult { ToolVersion = "1.0.0", Facts = f8, Findings = e8 };
 Check(Report.Summary(r) == "1 serious problem and 1 thing worth fixing.", "summary wording: " + Report.Summary(r));
+
+// ---------- Review fixes ----------
+Check(Lists.IsGoodSite("{google:baseURL}search?q={searchTerms}&{google:RLZ}"), "Chrome's own Google template is good");
+Check(Lists.IsGoodSite("https://www.google.co.uk/search?q={searchTerms}") && Lists.IsGoodSite("https://www.bing.com/search?q=%s") && Lists.IsGoodSite("chrome://newtab/"), "good sites");
+Check(!Lists.IsGoodSite("https://google.evil.test/search?q={searchTerms}") && !Lists.IsGoodSite("https://evil.test/?ref=google.com") && !Lists.IsGoodSite("https://newtab.evil.test/"), "lookalike sites aren't good");
+var rf = Healthy(); rf.Hosts = new List<string> { "0.0.0.0 mcafee-renewal-alert.xyz", "0.0.0.0 norton-support-billing.top", "0.0.0.0 www.mcafee.com", "1.2.3.4 login.live.com" };
+var re = Eval(rf);
+Check(re.Single(f => f.Id == "hosts:block").FixData.SequenceEqual(new[] { "2" }) && !re.Single(f => f.Id == "hosts:block").Detail.Contains("renewal"), "scam-name blocks are left alone; only mcafee.com flagged");
+Check(re.Single(f => f.Id == "hosts:redirect").FixData.SequenceEqual(new[] { "3" }), "redirect finding has only its own line");
+Check(Rules.HostsLinesFor("hosts:block", rf.Hosts).SequenceEqual(new[] { 2 }) && Rules.HostsLinesFor("hosts:redirect", rf.Hosts).SequenceEqual(new[] { 3 }) && Rules.HostsLinesFor("x", rf.Hosts).Count == 0, "hosts lines per finding");
+var pf = Healthy();
+pf.Policies.Add(new BrowserPolicy { Browser = "Edge", Setting = "HomepageLocation", Key = "k", ValueName = "HomepageLocation", Value = "https://www.google.com" });
+Check(Eval(pf).Count == 0, "policy home page set to Google isn't flagged");
+pf.Policies.Add(new BrowserPolicy { Browser = "Edge", Setting = "DefaultSearchProviderSearchURL", Key = "k", ValueName = "DefaultSearchProviderSearchURL", Value = "https://search.hijack.test/?q={searchTerms}" });
+Check(Eval(pf).Single().Severity == Severity.Risk, "policy search hijack still flagged");
+var uf = Healthy(); uf.Defender = new DefenderState();
+Check(Eval(uf).Single() is { Id: "defender:unread", Severity: Severity.Info }, "Defender details unreadable but Security Center says on");
+var sg = Rules.Evaluate(new ScanFacts { Defender = Healthy().Defender, SecurityCenter = Healthy().SecurityCenter, Hosts = Healthy().Hosts,
+    Startup = { new StartupItem { Location = "L", Name = "N", Command = @"C:\Users\a\AppData\Roaming\x\x.exe", Program = @"C:\Users\a\AppData\Roaming\x\x.exe", Signed = false, Signer = "Fake Corp", ProgramExists = true } } }, now);
+Check(!sg.Single().Detail.Contains("Signed by"), "bad signature's signer isn't shown");
 
 // ---------- Browser files ----------
 var tmp = Path.Combine(Path.GetTempPath(), "shieldtest-" + Guid.NewGuid().ToString("N"));

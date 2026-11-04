@@ -12,9 +12,10 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         _single = new Mutex(true, MutexName, out bool first);
-        if (!first)
+        // Any program could hold this name to keep Shield from opening, so it's a question, not a stop.
+        if (!first && MessageBox.Show("Night Tech Shield looks like it's already open. Open another window anyway?", "Night Tech Shield",
+                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
         {
-            MessageBox.Show("Night Tech Shield is already open.", "Night Tech Shield", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;
         }

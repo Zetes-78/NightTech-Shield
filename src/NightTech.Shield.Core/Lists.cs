@@ -32,15 +32,32 @@ public static class Lists
     public static readonly Regex RemoteControl = R(
         @"\bAnyDesk\b|\bTeamViewer\b|ScreenConnect|ConnectWise Control|\bLogMeIn\b|\bGoTo (Resolve|Assist)\b|\bRustDesk\b|\bUltraViewer\b|\bSupremo\b|\bSplashtop\b|\b(Real|Tight|Ultra|Tiger)VNC\b|\bAmmyy\b|\bAeroAdmin\b|\bRemotePC\b|\bZoho Assist\b|\bAction1\b|\bAtera\b|\bSimpleHelp\b|\bNetSupport\b|\bLiteManager\b");
 
-    /// <summary>Search engines and start pages nobody needs warning about.</summary>
-    public static readonly string[] GoodSites =
+    /// <summary>Search engines and start pages nobody needs warning about (the site and everything under it).</summary>
+    public static readonly string[] GoodDomains =
     {
-        "google.", "bing.com", "duckduckgo.com", "yahoo.com", "ecosia.org", "startpage.com", "brave.com", "msn.com", "microsoft.com",
-        "live.com", "office.com", "outlook.com", "chrome://", "edge://", "brave://", "about:", "chrome-search://", "newtab",
+        "bing.com", "duckduckgo.com", "yahoo.com", "ecosia.org", "startpage.com", "brave.com", "search.brave.com", "msn.com", "microsoft.com",
+        "live.com", "office.com", "outlook.com", "microsoft365.com", "qwant.com", "kagi.com", "mozilla.org", "firefox.com",
     };
 
-    public static bool IsGoodSite(string url) =>
-        url.Length == 0 || GoodSites.Any(g => url.Contains(g, StringComparison.OrdinalIgnoreCase));
+    /// <summary>Browser pages and new-tab pages.</summary>
+    private static readonly string[] GoodSchemes = { "chrome", "edge", "brave", "vivaldi", "about", "chrome-search", "chrome-extension", "file" };
+
+    /// <summary>
+    /// True for well-known search engines and start pages, judged by the site's name, not by words anywhere in the address.
+    /// Chrome's own Google search address starts with {google:baseURL}.
+    /// </summary>
+    public static bool IsGoodSite(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return true;
+        var u = url.Trim().Replace("{google:baseURL}", "https://www.google.com/", StringComparison.OrdinalIgnoreCase);
+        u = Regex.Replace(u, @"\{[^}]*\}", "x");
+        if (!u.Contains("://", StringComparison.Ordinal) && !u.StartsWith("about:", StringComparison.OrdinalIgnoreCase)) u = "https://" + u;
+        if (!Uri.TryCreate(u, UriKind.Absolute, out var uri)) return false;
+        if (GoodSchemes.Contains(uri.Scheme.ToLowerInvariant())) return true;
+        var host = uri.Host.ToLowerInvariant().TrimEnd('.');
+        if (Regex.IsMatch(host, @"(^|\.)google\.(com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$")) return true;
+        return GoodDomains.Any(d => host == d || host.EndsWith("." + d, StringComparison.Ordinal));
+    }
 
     /// <summary>Words hijackers put in their search and start-page addresses.</summary>
     public static readonly Regex HijackUrl = R(@"search|srch|query|find|mystart|myway|startpage|safe-?finder|feed\.|results\.|go\.php|\?q=");

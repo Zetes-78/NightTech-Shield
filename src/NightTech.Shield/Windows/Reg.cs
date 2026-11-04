@@ -41,7 +41,11 @@ public static class Reg
     /// <summary>Friendly words for where a key is: "this user" or "all users".</summary>
     public static string Scope(string location) => location.StartsWith("HKU\\", StringComparison.OrdinalIgnoreCase) ? "this user" : "all users";
 
-    public static string Str(RegistryKey k, string name) => k.GetValue(name, null, RegistryValueOptions.None)?.ToString()?.Trim() ?? "";
+    /// <summary>
+    /// A value as stored, with %VARIABLES% left in: expanding here would use the administrator's folders, not the
+    /// signed-in person's (TargetUser.Expand does that).
+    /// </summary>
+    public static string Str(RegistryKey k, string name) => k.GetValue(name, null, RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString()?.Trim() ?? "";
 
     public static int? Int(RegistryKey k, string name) => k.GetValue(name) switch
     {

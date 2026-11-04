@@ -44,6 +44,7 @@ public partial class MainWindow : Window
         try
         {
             _user = TargetUser.Find();
+            Fixer.LinksAllowed = _user.IsCurrentProcessUser;
             _fixer = new Fixer(_user);
             UndoMenu.IsEnabled = _fixer.Log.Undoable.Any();
             if (!_user.IsCurrentProcessUser)
@@ -99,8 +100,11 @@ public partial class MainWindow : Window
             Severity.Risk => "Shield found problems to fix now",
             _ => "Shield found a few things worth fixing",
         };
+        bool otherAv = _result.Findings.Any(f => f.Id == "av:other");
+        bool partial = _result.Facts.Notes.Count > 0;
         string detail = Report.Summary(_result) + (worst is null
-            ? " Defender is on and nothing suspicious turned up in the places Shield checks."
+            ? (otherAv ? " Your antivirus is on" : " Microsoft Defender is on") + " and nothing suspicious turned up in the places Shield checked"
+              + (partial ? ". Some checks didn't finish; they're listed at the bottom." : ".")
             : " The ones Night Tech recommends fixing are ticked. Untick anything you use on purpose, then choose Fix selected.");
         ShowStatus(title, detail, worst);
         NotesText.Text = _result.Facts.Notes.Count == 0 ? "" : "Couldn't check: " + string.Join(" ", _result.Facts.Notes);
@@ -317,10 +321,27 @@ public partial class MainWindow : Window
         }
     }
 
-    private void WindowsSecurity_Click(object sender, RoutedEventArgs e) => Fixer.OpenLink("windowsdefender://threat");
+    private void WindowsSecurity_Click(object sender, RoutedEventArgs e)
+    {
+        if (!Fixer.OpenLink("windowsdefender://threat"))
+            MessageBox.Show(this, "Open Windows Security from the Start menu.", "Windows Security", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
     private void About_Click(object sender, RoutedEventArgs e) => new AboutWindow { Owner = this }.ShowDialog();
-    private void Website_Click(object sender, RoutedEventArgs e) => Fixer.OpenLink(Brand.Website + "/");
-    private void Phone_Click(object sender, RoutedEventArgs e) => Fixer.OpenLink(Brand.PhoneLink);
+    private void Website_Click(object sender, RoutedEventArgs e) => Open(this, Brand.Website + "/");
+    private void Phone_Click(object sender, RoutedEventArgs e) => Open(this, Brand.PhoneLink);
+
+    /// <summary>
+    /// Opens a link in the person's own browser. When a different administrator approved Shield, the browser would open
+    /// with that administrator's rights, so the address is shown to copy instead.
+    /// </summary>
+    public static void Open(Window owner, string url)
+    {
+        if (Fixer.OpenLink(url)) return;
+        bool phone = url.StartsWith("tel:", StringComparison.Ordinal);
+        BrowserHelp.ShowAddress(owner, phone ? "Call Night Tech Solutions" : "Open in your browser", phone ? Brand.Phone : "Open this page",
+            phone ? $"Call or text us at {Brand.Phone}. {Brand.Hours}." : "Copy this address into your browser.", phone ? Brand.Phone : url);
+    }
 }
 
 /// <summary>One finding in the list.</summary>

@@ -69,6 +69,13 @@ public static class Rules
             return;
         }
 
+        if (!d.Present && f.SecurityCenter.Any(p => p.IsDefender && p.Enabled))
+        {
+            Add(list, "defender:unread", A, Severity.Info, "Microsoft Defender is on",
+                "Windows Security Center says Defender is on, but Shield couldn't read its details (definitions, last scan, detections). Check them in Windows Security.");
+            return;
+        }
+
         if (!d.Present)
         {
             if (f.SecurityCenter.Count == 0)
@@ -239,7 +246,7 @@ public static class Rules
             var label = s.Name.Length > 0 ? s.Name : CommandLine.BaseName(s.Program);
             Add(list, $"startup:{s.Location}|{s.Name}", "Startup", j.Severity, $"Startup item: {label}",
                 $"\"{label}\" starts with Windows ({s.Where}), and {j.Why}. Command: {Short(s.Command, 200)}"
-                + (s.Signer.Length > 0 ? $" Signed by {s.Signer}." : ""),
+                + (s.Signed == true && s.Signer.Length > 0 ? $" Signed by {s.Signer}." : ""),
                 FixKind.DisableStartup, "Stop it starting", j.Recommended, s.Kind.ToString(), s.Location, s.Name);
         }
     }
@@ -290,7 +297,8 @@ public static class Rules
     {
         const string A = "Browsers";
         bool managed = f.DomainJoined == true;
-        foreach (var g in f.Policies.GroupBy(p => (p.Browser, p.Setting)))
+        var suspicious = f.Policies.Where(p => p.Setting == "ExtensionInstallForcelist" || !Lists.IsGoodSite(p.Value));
+        foreach (var g in suspicious.GroupBy(p => (p.Browser, p.Setting)))
         {
             var p = g.First();
             string what = p.Setting switch
@@ -341,11 +349,16 @@ public static class Rules
         : !d.Contains('.') ? host.Contains(d, StringComparison.Ordinal)
         : host == d || host.EndsWith("." + d, StringComparison.Ordinal));
 
+    /// <summary>Windows Update, Defender and security companies' own domains (a name and everything under it).</summary>
     private static readonly string[] SecurityOrUpdate =
     {
-        "windowsupdate", "update.microsoft", "wdcp.microsoft", "wd.microsoft", "smartscreen", "defender", "malwarebytes", "kaspersky", "avast", "avg.com",
-        "norton", "mcafee", "bitdefender", "eset.com", "sophos", "avira", "trendmicro", "webroot", "f-secure", "virustotal", "eicar",
+        "windowsupdate.com", "update.microsoft.com", "download.microsoft.com", "delivery.mp.microsoft.com", "wdcp.microsoft.com", "wdcpalt.microsoft.com",
+        "definitionupdates.microsoft.com", "smartscreen.microsoft.com", "smartscreen-prod.microsoft.com", "malwarebytes.com", "kaspersky.com", "avast.com",
+        "avg.com", "norton.com", "mcafee.com", "bitdefender.com", "eset.com", "sophos.com", "avira.com", "trendmicro.com", "webroot.com", "f-secure.com",
+        "virustotal.com", "eicar.org", "nighttech.solutions",
     };
+
+    private static bool Under(string host, string domain) => host == domain || host.EndsWith("." + domain, StringComparison.Ordinal);
 
     /// <summary>Ad, tracking and telemetry names people block on purpose with privacy tools.</summary>
     private static readonly string[] AdOrTelemetry =
@@ -353,22 +366,39 @@ public static class Rules
         "ad.", "ads.", "adservice", "pagead", "analytics", "track", "telemetry", "vortex", "watson", "stats.", "metrics", "doubleclick", "settings-win.data",
     };
 
+    /// <summary>The hosts lines one hosts finding is about, worked out from the file as it is (used again just before fixing).</summary>
+    public static List<int> HostsLinesFor(string findingId, IReadOnlyList<string> lines)
+    {
+        var entries = ParseHosts(lines).Where(e => e.Host != "localhost" && e.Host != "localhost.localdomain").ToList();
+        var chosen = findingId switch
+        {
+            "hosts:redirect" => Redirects(entries),
+            "hosts:block" => BlockedSecurity(entries),
+            _ => new List<HostsEntry>(),
+        };
+        return chosen.Select(e => e.Line).Distinct().OrderBy(n => n).ToList();
+    }
+
+    private static List<HostsEntry> Redirects(List<HostsEntry> entries) => entries.Where(e => !e.Blocks && IsProtected(e.Host)).ToList();
+
+    private static List<HostsEntry> BlockedSecurity(List<HostsEntry> entries) =>
+        entries.Where(e => e.Blocks && SecurityOrUpdate.Any(d => Under(e.Host, d)) && !AdOrTelemetry.Any(a => e.Host.Contains(a, StringComparison.Ordinal))).ToList();
+
     private static void Hosts(ScanFacts f, List<Finding> list)
     {
         const string A = "Network";
         var entries = ParseHosts(f.Hosts).Where(e => e.Host != "localhost" && e.Host != "localhost.localdomain").ToList();
-        var redirects = entries.Where(e => !e.Blocks && IsProtected(e.Host)).ToList();
-        var blockedSecurity = entries.Where(e => e.Blocks && SecurityOrUpdate.Any(s => e.Host.Contains(s, StringComparison.Ordinal))
-                                                 && !AdOrTelemetry.Any(a => e.Host.Contains(a, StringComparison.Ordinal))).ToList();
-        var bad = redirects.Concat(blockedSecurity).ToList();
+        var redirects = Redirects(entries);
+        var blockedSecurity = BlockedSecurity(entries);
+        var bad = redirects.Concat(blockedSecurity).Distinct().ToList();
         if (redirects.Count > 0)
             Add(list, "hosts:redirect", A, Severity.Risk, "The hosts file sends well-known sites somewhere else",
                 $"{string.Join(", ", redirects.Select(e => $"{e.Host} goes to {e.Address}").Distinct().Take(6))}. This is how fake bank and login pages get shown at the real address.",
-                FixKind.CleanHosts, "Remove those lines", true, bad.Select(e => e.Line.ToString()).Distinct().ToArray());
+                FixKind.CleanHosts, "Turn those lines off", true, redirects.Select(e => e.Line.ToString()).Distinct().ToArray());
         if (blockedSecurity.Count > 0)
             Add(list, "hosts:block", A, Severity.Risk, "The hosts file blocks security or update sites",
                 $"{string.Join(", ", blockedSecurity.Select(e => e.Host).Distinct().Take(6))} can't be reached. Malware does this to stop antivirus and Windows from updating.",
-                FixKind.CleanHosts, "Remove those lines", true, bad.Select(e => e.Line.ToString()).Distinct().ToArray());
+                FixKind.CleanHosts, "Turn those lines off", true, blockedSecurity.Select(e => e.Line.ToString()).Distinct().ToArray());
 
         int otherCount = entries.Count - bad.Count;
         if (otherCount > 0)
