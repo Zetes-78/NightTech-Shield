@@ -1,0 +1,111 @@
+<Window x:Class="NightTech.Shield.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Night Tech Shield" Width="900" Height="760" MinWidth="640" MinHeight="520"
+        WindowStartupLocation="CenterScreen" Background="White" FontFamily="Segoe UI" FontSize="14"
+        Icon="Assets/shield.ico">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <!-- Header -->
+    <Border Grid.Row="0" Background="{StaticResource Navy}" Padding="20,14">
+      <DockPanel>
+        <Image Source="Assets/shield-256.png" Width="44" Height="44" Margin="0,0,14,0" DockPanel.Dock="Left" />
+        <Button DockPanel.Dock="Right" Content="About" Style="{StaticResource Secondary}" Padding="12,5" FontSize="13" VerticalAlignment="Center" Click="About_Click" />
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="Night Tech Shield" Foreground="White" FontSize="22" FontWeight="SemiBold" />
+          <TextBlock Foreground="#CBD5E0" FontSize="13">
+            <Run Text="Free malware and adware check, powered by Microsoft Defender. From " /><Hyperlink Foreground="{StaticResource Orange}" Click="Website_Click">Night Tech Solutions</Hyperlink>
+          </TextBlock>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Status -->
+    <Border Grid.Row="1" Margin="20,16,20,0" Padding="18,14" CornerRadius="8" Background="{StaticResource Gray}" BorderBrush="{StaticResource Line}" BorderThickness="1">
+      <DockPanel>
+        <Border x:Name="StatusDot" Width="14" Height="14" CornerRadius="7" Background="{StaticResource Blue}" Margin="0,6,14,0" VerticalAlignment="Top" DockPanel.Dock="Left" />
+        <StackPanel>
+          <TextBlock x:Name="StatusTitle" Text="Ready to scan" FontSize="20" FontWeight="SemiBold" Foreground="#1A202C" TextWrapping="Wrap" />
+          <TextBlock x:Name="StatusDetail" Margin="0,4,0,0" Foreground="{StaticResource Muted}" TextWrapping="Wrap"
+                     Text="Shield checks Microsoft Defender, what starts with Windows, installed programs, browsers and network settings. Scanning only looks; nothing is changed until you choose what to fix." />
+          <ProgressBar x:Name="Progress" Height="6" Margin="0,10,0,0" IsIndeterminate="True" Visibility="Collapsed" Foreground="{StaticResource Orange}" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Actions -->
+    <WrapPanel Grid.Row="2" Margin="20,12,20,4">
+      <Button x:Name="ScanButton" Content="Scan now" Style="{StaticResource Primary}" Margin="0,0,10,8" Click="Scan_Click" />
+      <Button x:Name="FixButton" Content="Fix selected" Style="{StaticResource Primary}" Margin="0,0,10,8" IsEnabled="False" Click="Fix_Click" />
+      <Button x:Name="CancelButton" Content="Stop" Style="{StaticResource Secondary}" Margin="0,0,10,8" Visibility="Collapsed" Click="Cancel_Click" />
+      <Button x:Name="MoreButton" Content="More ▾" Style="{StaticResource Secondary}" Margin="0,0,10,8" Click="More_Click">
+        <Button.ContextMenu>
+          <ContextMenu x:Name="MoreMenu">
+            <MenuItem Header="Defender quick scan" Click="QuickScan_Click" />
+            <MenuItem Header="Defender full scan (can take an hour or more)" Click="FullScan_Click" />
+            <MenuItem Header="Scan a folder with Defender..." Click="ScanPath_Click" />
+            <MenuItem Header="Update Defender's virus definitions" Click="Update_Click" />
+            <MenuItem Header="Microsoft Defender Offline scan (restarts the PC)..." Click="Offline_Click" />
+            <Separator />
+            <MenuItem x:Name="UndoMenu" Header="Undo changes..." Click="Undo_Click" />
+            <MenuItem x:Name="SaveMenu" Header="Save report..." Click="Save_Click" IsEnabled="False" />
+            <Separator />
+            <MenuItem Header="Open Windows Security" Click="WindowsSecurity_Click" />
+          </ContextMenu>
+        </Button.ContextMenu>
+      </Button>
+      <CheckBox x:Name="RestorePoint" Content="Make a Windows restore point before fixing" IsChecked="True" VerticalAlignment="Center" Margin="6,0,0,8" />
+    </WrapPanel>
+
+    <!-- Findings -->
+    <ScrollViewer Grid.Row="3" Margin="20,0,8,0" Padding="0,0,12,0" VerticalScrollBarVisibility="Auto">
+      <StackPanel>
+        <ItemsControl x:Name="FindingsList">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Margin="0,0,0,10" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Background="White">
+                <DockPanel>
+                  <Border Width="6" Background="{Binding Accent}" CornerRadius="6,0,0,6" DockPanel.Dock="Left" />
+                  <DockPanel Margin="12,10">
+                    <CheckBox DockPanel.Dock="Left" Margin="0,3,10,0" VerticalAlignment="Top" IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                              Visibility="{Binding CheckVisibility}" IsEnabled="{Binding CanTick}" AutomationProperties.Name="{Binding Finding.Title}" Checked="Row_Changed" Unchecked="Row_Changed" />
+                    <StackPanel>
+                      <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Text="{Binding Label}" Foreground="{Binding Accent}" FontSize="12" FontWeight="SemiBold" Margin="10,2,0,0" />
+                        <TextBlock Text="{Binding Finding.Title}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                      </DockPanel>
+                      <TextBlock Text="{Binding Finding.Detail}" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,4,0,0" FontSize="13" />
+                      <TextBlock Text="{Binding FixText}" Foreground="{StaticResource Navy}" FontSize="12" Margin="0,6,0,0" Visibility="{Binding FixVisibility}" />
+                      <TextBlock Text="{Binding Result}" Foreground="{Binding ResultBrush}" FontSize="13" FontWeight="SemiBold" Margin="0,6,0,0" TextWrapping="Wrap" Visibility="{Binding ResultVisibility}" />
+                    </StackPanel>
+                  </DockPanel>
+                </DockPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock x:Name="NotesText" Foreground="{StaticResource Muted}" FontSize="12" TextWrapping="Wrap" Margin="0,4,0,12" Visibility="Collapsed" />
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- Footer -->
+    <Border Grid.Row="4" Background="{StaticResource Gray}" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="20,10">
+      <DockPanel>
+        <Image Source="Assets/nighttech-logo.png" Height="34" Margin="0,0,12,0" DockPanel.Dock="Left" />
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock FontSize="13" TextWrapping="Wrap">
+            <Run Text="Need a hand? Call Night Tech Solutions at " /><Hyperlink Style="{StaticResource LinkText}" Click="Phone_Click"><Run x:Name="PhoneRun" /></Hyperlink><Run Text=", text " /><Run x:Name="TextRun" /><Run Text=", or visit " /><Hyperlink Style="{StaticResource LinkText}" Click="Website_Click">nighttech.solutions</Hyperlink>
+          </TextBlock>
+          <TextBlock x:Name="VerseText" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,2,0,0" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+  </Grid>
+</Window>

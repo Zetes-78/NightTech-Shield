@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>NightTech.Shield</RootNamespace>
+    <AssemblyName>NightTechShield</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\shield.ico</ApplicationIcon>
+
+    <Product>Night Tech Shield</Product>
+    <Company>Night Tech Solutions</Company>
+    <Authors>Night Tech Solutions</Authors>
+    <Description>Night Tech Shield - free malware and adware check for Windows</Description>
+    <Copyright>© 2026 Night Tech Solutions</Copyright>
+    <Version>1.0.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+
+    <!-- One self-contained exe: no .NET install needed on the person's PC -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <ProjectReference Include="..\NightTech.Shield.Core\NightTech.Shield.Core.csproj" />
+    <Resource Include="Assets\shield.ico" />
+    <Resource Include="Assets\shield-256.png" />
+    <Resource Include="Assets\nighttech-logo.png" />
+  </ItemGroup>
+</Project>

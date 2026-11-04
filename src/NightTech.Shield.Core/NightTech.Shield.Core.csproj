@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- What Shield checks and how it judges it. No Windows calls here, so the rules can be tested anywhere. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>NightTech.Shield.Core</RootNamespace>
+    <AssemblyName>NightTech.Shield.Core</AssemblyName>
+    <Company>Night Tech Solutions</Company>
+    <Product>Night Tech Shield</Product>
+    <Copyright>© 2026 Night Tech Solutions</Copyright>
+  </PropertyGroup>
+
+</Project>
